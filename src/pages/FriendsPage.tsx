@@ -249,20 +249,20 @@ export default function FriendsPage() {
               {searchResults.length > 0 && (
                 <div className="mt-4 space-y-2">
                   {searchResults.map((profile) => (
-                    <div key={profile.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={profile.profile_photo_url} />
-                          <AvatarFallback>
-                            {profile.display_name?.charAt(0) || profile.username.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{profile.display_name}</p>
-                          <p className="text-sm text-muted-foreground">@{profile.username}</p>
-                          {profile.bio && <p className="text-sm text-muted-foreground">{profile.bio}</p>}
-                        </div>
-                      </div>
+                     <div key={profile.id} className="flex items-center justify-between p-3 border rounded-lg">
+                       <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${profile.user_id}`)}>
+                         <Avatar>
+                           <AvatarImage src={profile.profile_photo_url} />
+                           <AvatarFallback>
+                             {profile.display_name?.charAt(0) || profile.username.charAt(0)}
+                           </AvatarFallback>
+                         </Avatar>
+                         <div>
+                           <p className="font-medium">{profile.display_name}</p>
+                           <p className="text-sm text-muted-foreground">@{profile.username}</p>
+                           {profile.bio && <p className="text-sm text-muted-foreground">{profile.bio}</p>}
+                         </div>
+                       </div>
                       <Button onClick={() => sendFriendRequest(profile.user_id)}>
                         <UserPlus className="h-4 w-4 mr-2" />
                         Add Friend
@@ -297,21 +297,21 @@ export default function FriendsPage() {
                 </Card>
               ) : (
                 friends.map((friend) => (
-                  <Card key={friend.id}>
-                    <CardContent className="flex items-center justify-between p-6">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={friend.profile_photo_url} />
-                          <AvatarFallback>
-                            {friend.display_name?.charAt(0) || friend.username.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h3 className="font-medium">{friend.display_name}</h3>
-                          <p className="text-sm text-muted-foreground">@{friend.username}</p>
-                          {friend.bio && <p className="text-sm text-muted-foreground mt-1">{friend.bio}</p>}
-                        </div>
-                      </div>
+                   <Card key={friend.id}>
+                     <CardContent className="flex items-center justify-between p-6">
+                       <div className="flex items-center gap-4 cursor-pointer" onClick={() => navigate(`/profile/${friend.user_id}`)}>
+                         <Avatar className="h-12 w-12">
+                           <AvatarImage src={friend.profile_photo_url} />
+                           <AvatarFallback>
+                             {friend.display_name?.charAt(0) || friend.username.charAt(0)}
+                           </AvatarFallback>
+                         </Avatar>
+                         <div>
+                           <h3 className="font-medium">{friend.display_name}</h3>
+                           <p className="text-sm text-muted-foreground">@{friend.username}</p>
+                           {friend.bio && <p className="text-sm text-muted-foreground mt-1">{friend.bio}</p>}
+                         </div>
+                       </div>
                       <Button onClick={() => startChat(friend.user_id)}>
                         <MessageCircle className="h-4 w-4 mr-2" />
                         Message

@@ -20,7 +20,7 @@ const App = () => (
         <Sonner />
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/:userId?" element={<ProfilePage />} />
           <Route path="/friends" element={<FriendsPage />} />
           <Route path="/chat/:friendId" element={<ChatPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

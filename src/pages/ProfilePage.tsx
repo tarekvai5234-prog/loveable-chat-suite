@@ -5,10 +5,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Camera, MessageCircle, Settings, Plus, Heart, MessageSquare } from 'lucide-react';
+import { Camera, MessageCircle, Settings, Plus, Heart, MessageSquare, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate, useParams } from 'react-router-dom';
 
 interface Profile {
   id: string;
@@ -34,27 +35,37 @@ interface Post {
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { userId } = useParams<{ userId?: string }>();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [highlights, setHighlights] = useState<Post[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [newPost, setNewPost] = useState({ content: '', type: 'status' });
+  const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'pending' | 'accepted' | 'sent'>('none');
+  
+  const isOwnProfile = !userId || userId === user?.id;
 
   useEffect(() => {
     if (user) {
       fetchProfile();
       fetchPosts();
+      if (!isOwnProfile) {
+        checkFriendshipStatus();
+      }
     }
-  }, [user]);
+  }, [user, userId]);
 
   const fetchProfile = async () => {
     if (!user) return;
     
+    const targetUserId = userId || user.id;
+    
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
       .single();
 
     if (error) {
@@ -72,10 +83,12 @@ export default function ProfilePage() {
   const fetchPosts = async () => {
     if (!user) return;
     
+    const targetUserId = userId || user.id;
+    
     const { data, error } = await supabase
       .from('posts')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -83,6 +96,60 @@ export default function ProfilePage() {
     } else {
       setPosts(data.filter(post => post.post_type === 'status'));
       setHighlights(data.filter(post => post.post_type === 'highlight'));
+    }
+  };
+
+  const checkFriendshipStatus = async () => {
+    if (!user || !userId) return;
+    
+    const { data, error } = await supabase
+      .from('friends')
+      .select('*')
+      .or(`and(requester_id.eq.${user.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${user.id})`)
+      .single();
+
+    if (error) {
+      setFriendshipStatus('none');
+    } else {
+      if (data.status === 'accepted') {
+        setFriendshipStatus('accepted');
+      } else if (data.requester_id === user.id) {
+        setFriendshipStatus('sent');
+      } else {
+        setFriendshipStatus('pending');
+      }
+    }
+  };
+
+  const sendFriendRequest = async () => {
+    if (!user || !userId) return;
+    
+    const { error } = await supabase
+      .from('friends')
+      .insert({
+        requester_id: user.id,
+        addressee_id: userId,
+        status: 'pending'
+      });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send friend request",
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Friend request sent!"
+      });
+      setFriendshipStatus('sent');
+    }
+  };
+
+  const startChat = () => {
+    if (userId) {
+      navigate(`/chat/${userId}`);
     }
   };
 
@@ -221,14 +288,39 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex justify-center gap-4 mt-6">
-              <Button className="bg-gradient-primary hover:shadow-glow">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Message
-              </Button>
-              <Button variant="outline">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Friend
-              </Button>
+              {isOwnProfile ? (
+                <Button className="bg-gradient-primary hover:shadow-glow" onClick={() => navigate('/friends')}>
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Messages
+                </Button>
+              ) : (
+                <>
+                  {friendshipStatus === 'accepted' && (
+                    <Button className="bg-gradient-primary hover:shadow-glow" onClick={startChat}>
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Message
+                    </Button>
+                  )}
+                  {friendshipStatus === 'none' && (
+                    <Button variant="outline" onClick={sendFriendRequest}>
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Add Friend
+                    </Button>
+                  )}
+                  {friendshipStatus === 'sent' && (
+                    <Button variant="outline" disabled>
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Request Sent
+                    </Button>
+                  )}
+                  {friendshipStatus === 'pending' && (
+                    <Button variant="outline" disabled>
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Request Pending
+                    </Button>
+                  )}
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -265,14 +357,15 @@ export default function ProfilePage() {
                   className="flex-shrink-0 w-20 h-20 rounded-full"
                   onClick={() => setNewPost({ ...newPost, type: 'highlight' })}
                 >
-                  <Plus className="h-6 w-6" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                   <Plus className="h-6 w-6" />
+                 </Button>
+               </div>
+           </CardContent>
+         </Card>
         )}
 
-        {/* Create Post */}
+        {/* Create Post - Only show for own profile */}
+        {isOwnProfile && (
         <Card className="mt-6">
           <CardContent className="pt-6">
             <div className="flex gap-4">
@@ -314,6 +407,7 @@ export default function ProfilePage() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* Posts */}
         <div className="mt-6 space-y-4">
