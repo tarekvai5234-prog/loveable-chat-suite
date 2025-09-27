@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Lock, Mail, User, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -19,12 +20,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
   const [showPassword, setShowPassword] = useState(false);
   
   const [loginForm, setLoginForm] = useState({
-    email: 'demo@example.com',
-    password: 'password123'
+    email: '',
+    password: ''
   });
   
   const [signupForm, setSignupForm] = useState({
-    name: '',
+    username: '',
+    displayName: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -34,15 +36,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: loginForm.email,
+        password: loginForm.password,
+      });
+
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+
       toast({
         title: "Welcome back!",
         description: "Successfully signed in to your account.",
       });
       onAuthenticated();
-    }, 1500);
+    } catch (error) {
+      toast({
+        title: "Login failed",
+        description: "An unexpected error occurred.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -59,15 +81,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
     
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: signupForm.email,
+        password: signupForm.password,
+        options: {
+          data: {
+            username: signupForm.username,
+            display_name: signupForm.displayName,
+          },
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Signup failed",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+
       toast({
         title: "Account created!",
-        description: "Your secure messaging account has been created.",
+        description: "Check your email to verify your account.",
       });
       onAuthenticated();
-    }, 2000);
+    } catch (error) {
+      toast({
+        title: "Signup failed",
+        description: "An unexpected error occurred.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -145,14 +194,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
           <TabsContent value="signup" className="space-y-4">
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="signup-name">Display Name</Label>
+                <Label htmlFor="signup-username">Username</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="signup-name"
+                    id="signup-username"
                     type="text"
-                    value={signupForm.name}
-                    onChange={(e) => setSignupForm(prev => ({ ...prev, name: e.target.value }))}
+                    value={signupForm.username}
+                    onChange={(e) => setSignupForm(prev => ({ ...prev, username: e.target.value }))}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signup-display-name">Display Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="signup-display-name"
+                    type="text"
+                    value={signupForm.displayName}
+                    onChange={(e) => setSignupForm(prev => ({ ...prev, displayName: e.target.value }))}
                     className="pl-10"
                     required
                   />
