@@ -38,6 +38,12 @@ export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
     const groups: { [key: string]: Message[] } = {};
     
     messages.forEach(message => {
+      // Validate that timestamp is a valid Date object
+      if (!message.timestamp || isNaN(message.timestamp.getTime())) {
+        console.warn('Invalid timestamp for message:', message);
+        return; // Skip messages with invalid timestamps
+      }
+      
       const dateKey = format(message.timestamp, 'yyyy-MM-dd');
       if (!groups[dateKey]) {
         groups[dateKey] = [];

@@ -145,14 +145,19 @@ export default function ChatPage() {
   };
 
   // Transform messages for the MessageList component
-  const transformedMessages = messages.map(msg => ({
-    id: msg.id,
-    content: msg.content,
-    timestamp: new Date(msg.created_at),
-    isSent: msg.sender_id === user?.id,
-    status: (msg.is_read ? 'read' : 'delivered') as 'sent' | 'delivered' | 'read',
-    type: 'text' as const
-  }));
+  const transformedMessages = messages.map(msg => {
+    // Validate created_at timestamp
+    const timestamp = msg.created_at ? new Date(msg.created_at) : new Date();
+    
+    return {
+      id: msg.id,
+      content: msg.content,
+      timestamp: isNaN(timestamp.getTime()) ? new Date() : timestamp,
+      isSent: msg.sender_id === user?.id,
+      status: (msg.is_read ? 'read' : 'delivered') as 'sent' | 'delivered' | 'read',
+      type: 'text' as const
+    };
+  });
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
