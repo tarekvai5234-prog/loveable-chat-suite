@@ -148,10 +148,10 @@ export default function ChatPage() {
   const transformedMessages = messages.map(msg => ({
     id: msg.id,
     content: msg.content,
-    sender: msg.sender_id === user?.id ? 'You' : friend?.display_name || friend?.username || 'Friend',
-    timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    isOwn: msg.sender_id === user?.id,
-    status: msg.is_read ? 'read' : 'delivered'
+    timestamp: new Date(msg.created_at),
+    isSent: msg.sender_id === user?.id,
+    status: (msg.is_read ? 'read' : 'delivered') as 'sent' | 'delivered' | 'read',
+    type: 'text' as const
   }));
 
   if (loading) {
@@ -169,13 +169,7 @@ export default function ChatPage() {
         isE2EEEnabled={isE2EEEnabled}
         onToggleE2EE={() => setIsE2EEEnabled(!isE2EEEnabled)}
       />
-      <MessageList messages={transformedMessages.map(msg => ({
-        ...msg,
-        timestamp: new Date(msg.timestamp),
-        isSent: msg.isOwn,
-        status: msg.status as 'sent' | 'delivered' | 'read',
-        type: 'text' as const
-      }))} />
+      <MessageList messages={transformedMessages} />
       <Composer onSendMessage={handleSendMessage} isE2EEEnabled={isE2EEEnabled} />
     </div>
   );
