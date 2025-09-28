@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Navigation } from '@/components/Navigation';
 
 interface Profile {
   id: string;
@@ -214,6 +215,11 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
+      {/* Navigation */}
+      <div className="p-4">
+        <Navigation />
+      </div>
+      
       <div className="max-w-4xl mx-auto p-4">
         {/* Cover Photo */}
         <div className="relative h-64 bg-gradient-primary rounded-t-2xl overflow-hidden">
