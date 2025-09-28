@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { Check, CheckCheck, Clock, Shield, Edit3 } from 'lucide-react';
+import { Check, CheckCheck, Clock, Shield, Edit3, Image } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PhotoModal } from './PhotoModal';
 
 interface Message {
   id: string;
@@ -12,6 +13,7 @@ interface Message {
   type: 'text' | 'image' | 'file';
   isEncrypted?: boolean;
   edited?: boolean;
+  media_url?: string;
 }
 
 interface MessageBubbleProps {
@@ -25,6 +27,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   isFirstInGroup, 
   isLastInGroup 
 }) => {
+  const [isPhotoOpen, setIsPhotoOpen] = useState(false);
+
   const renderStatusIcon = () => {
     switch (message.status) {
       case 'sending':
@@ -38,6 +42,57 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       default:
         return null;
     }
+  };
+
+  const renderMessageContent = () => {
+    if (message.type === 'image' && message.media_url) {
+      return (
+        <div className="relative">
+          <img
+            src={message.media_url}
+            alt={message.content || 'Shared image'}
+            className="max-w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => setIsPhotoOpen(true)}
+          />
+          {message.content && (
+            <p className="mt-2 text-sm">{message.content}</p>
+          )}
+        </div>
+      );
+    }
+    
+    if (message.type === 'file' && message.media_url) {
+      return (
+        <div className="flex items-center gap-2 p-2 bg-muted/20 rounded-lg">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Image className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">{message.content || 'File attachment'}</p>
+            <a 
+              href={message.media_url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:underline"
+            >
+              Download
+            </a>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div>
+        {message.content}
+        {message.edited && (
+          <span className="inline-flex items-center gap-1 ml-2 text-xs opacity-70">
+            <Edit3 className="w-3 h-3" />
+            edited
+          </span>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -77,14 +132,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         >
           {/* Message content */}
           <div className="relative z-10">
-            {message.content}
-            
-            {message.edited && (
-              <span className="inline-flex items-center gap-1 ml-2 text-xs opacity-70">
-                <Edit3 className="w-3 h-3" />
-                edited
-              </span>
-            )}
+            {renderMessageContent()}
           </div>
 
           {/* Encryption indicator */}
@@ -108,6 +156,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         )}
       </div>
+
+      {/* Photo Modal */}
+      {message.type === 'image' && message.media_url && (
+        <PhotoModal
+          src={message.media_url}
+          alt={message.content || 'Shared image'}
+          isOpen={isPhotoOpen}
+          onClose={() => setIsPhotoOpen(false)}
+        />
+      )}
     </div>
   );
 };
