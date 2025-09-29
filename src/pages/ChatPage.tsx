@@ -96,7 +96,12 @@ export default function ChatPage() {
     if (!user || !friendId) return;
     
     const channel = supabase
-      .channel(`messages:${user.id}:${friendId}`)
+      .channel(`messages:${user.id}:${friendId}`, {
+        config: {
+          broadcast: { self: true },
+          presence: { key: user.id }
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -107,6 +112,7 @@ export default function ChatPage() {
         },
         (payload) => {
           const newMessage = payload.new as Message;
+          console.log('Real-time message received:', newMessage);
           
           // Remove from optimistic messages if it exists
           setOptimisticMessages(prev => prev.filter(id => id !== newMessage.id));
@@ -116,12 +122,15 @@ export default function ChatPage() {
             if (prev.find(msg => msg.id === newMessage.id)) {
               return prev;
             }
-            return [...prev, newMessage];
+            const updatedMessages = [...prev, newMessage].sort((a, b) => 
+              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+            return updatedMessages;
           });
           
-          // Mark as read if it's from the friend
+          // Auto mark as read if it's from the friend
           if (newMessage.sender_id === friendId) {
-            markMessagesAsRead();
+            setTimeout(() => markMessagesAsRead(), 100);
           }
         }
       )
@@ -135,14 +144,18 @@ export default function ChatPage() {
         },
         (payload) => {
           const updatedMessage = payload.new as Message;
+          console.log('Real-time message updated:', updatedMessage);
           setMessages(prev => prev.map(msg => 
             msg.id === updatedMessage.id ? updatedMessage : msg
           ));
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
   };
