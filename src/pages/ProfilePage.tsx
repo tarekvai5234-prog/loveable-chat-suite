@@ -14,23 +14,25 @@ import { Navigation } from '@/components/Navigation';
 
 interface Profile {
   id: string;
+  user_id: string;
   username: string;
   display_name: string;
   bio: string;
   profile_photo_url: string;
-  cover_photo_url: string;
-  location: string;
-  website: string;
-  birth_date: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Post {
   id: string;
   content: string;
-  media_url: string;
-  media_type: string;
+  image_url?: string;
   post_type: string;
   created_at: string;
+  user_id: string;
+  likes_count: number;
+  comments_count: number;
+  updated_at: string;
 }
 
 export default function ProfilePage() {
@@ -223,13 +225,6 @@ export default function ProfilePage() {
       <div className="max-w-4xl mx-auto p-4">
         {/* Cover Photo */}
         <div className="relative h-64 bg-gradient-primary rounded-t-2xl overflow-hidden">
-          {profile.cover_photo_url && (
-            <img 
-              src={profile.cover_photo_url} 
-              alt="Cover" 
-              className="w-full h-full object-cover" 
-            />
-          )}
           <Button 
             size="icon" 
             variant="secondary" 
@@ -260,16 +255,6 @@ export default function ProfilePage() {
                     onChange={(e) => setProfile(prev => prev ? {...prev, display_name: e.target.value} : null)}
                     placeholder="Display name"
                   />
-                  <Input
-                    value={profile.location || ''}
-                    onChange={(e) => setProfile(prev => prev ? {...prev, location: e.target.value} : null)}
-                    placeholder="Location"
-                  />
-                  <Input
-                    value={profile.website || ''}
-                    onChange={(e) => setProfile(prev => prev ? {...prev, website: e.target.value} : null)}
-                    placeholder="Website"
-                  />
                   <Textarea
                     value={profile.bio || ''}
                     onChange={(e) => setProfile(prev => prev ? {...prev, bio: e.target.value} : null)}
@@ -286,9 +271,6 @@ export default function ProfilePage() {
                   <h1 className="text-2xl font-bold">{profile.display_name}</h1>
                   <p className="text-muted-foreground">@{profile.username}</p>
                   {profile.bio && <p className="text-sm max-w-md mx-auto">{profile.bio}</p>}
-                  {profile.location && (
-                    <Badge variant="secondary">{profile.location}</Badge>
-                  )}
                 </>
               )}
             </div>
@@ -345,9 +327,9 @@ export default function ProfilePage() {
                     className="flex-shrink-0 w-20 h-20 bg-gradient-primary rounded-full p-1"
                   >
                     <div className="w-full h-full bg-background rounded-full flex items-center justify-center">
-                      {highlight.media_url ? (
+                      {highlight.image_url ? (
                         <img 
-                          src={highlight.media_url} 
+                          src={highlight.image_url} 
                           alt="Highlight" 
                           className="w-full h-full object-cover rounded-full" 
                         />
@@ -435,9 +417,9 @@ export default function ProfilePage() {
                       </span>
                     </div>
                     <p className="mb-4">{post.content}</p>
-                    {post.media_url && (
+                    {post.image_url && (
                       <img 
-                        src={post.media_url} 
+                        src={post.image_url} 
                         alt="Post media" 
                         className="rounded-lg max-w-full h-auto mb-4" 
                       />

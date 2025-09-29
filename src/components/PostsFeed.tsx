@@ -12,11 +12,13 @@ import { formatDistanceToNow } from 'date-fns';
 interface Post {
   id: string;
   content: string;
-  media_url: string;
-  media_type: string;
+  image_url?: string;
   post_type: string;
   created_at: string;
   user_id: string;
+  likes_count: number;
+  comments_count: number;
+  updated_at: string;
   profile?: {
     user_id: string;
     username: string;
@@ -176,19 +178,13 @@ export const PostsFeed: React.FC<PostsFeedProps> = ({ className }) => {
             {/* Post Content */}
             <div className="mb-4">
               <p className="text-foreground leading-relaxed">{post.content}</p>
-              {post.media_url && (
+              {post.image_url && (
                 <div className="mt-4">
-                  {post.media_type?.startsWith('image/') ? (
-                    <img 
-                      src={post.media_url} 
-                      alt="Post media" 
-                      className="rounded-lg max-w-full h-auto border border-border/50" 
-                    />
-                  ) : (
-                    <div className="p-4 bg-muted/50 rounded-lg border border-border/50">
-                      <p className="text-sm text-muted-foreground">Media attachment</p>
-                    </div>
-                  )}
+                  <img 
+                    src={post.image_url} 
+                    alt="Post media" 
+                    className="rounded-lg max-w-full h-auto border border-border/50" 
+                  />
                 </div>
               )}
             </div>

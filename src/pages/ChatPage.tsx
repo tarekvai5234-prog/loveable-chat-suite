@@ -32,6 +32,7 @@ export default function ChatPage() {
   const [friend, setFriend] = useState<Profile | null>(null);
   const [isE2EEEnabled, setIsE2EEEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [optimisticMessages, setOptimisticMessages] = useState<string[]>([]);
 
   useEffect(() => {
     if (user && friendId) {
@@ -95,7 +96,7 @@ export default function ChatPage() {
     if (!user || !friendId) return;
     
     const channel = supabase
-      .channel('messages')
+      .channel(`messages:${user.id}:${friendId}`)
       .on(
         'postgres_changes',
         {
@@ -105,11 +106,38 @@ export default function ChatPage() {
           filter: `or(and(sender_id.eq.${user.id},recipient_id.eq.${friendId}),and(sender_id.eq.${friendId},recipient_id.eq.${user.id}))`
         },
         (payload) => {
-          setMessages(prev => [...prev, payload.new as Message]);
+          const newMessage = payload.new as Message;
+          
+          // Remove from optimistic messages if it exists
+          setOptimisticMessages(prev => prev.filter(id => id !== newMessage.id));
+          
+          setMessages(prev => {
+            // Avoid duplicates
+            if (prev.find(msg => msg.id === newMessage.id)) {
+              return prev;
+            }
+            return [...prev, newMessage];
+          });
+          
           // Mark as read if it's from the friend
-          if (payload.new.sender_id === friendId) {
+          if (newMessage.sender_id === friendId) {
             markMessagesAsRead();
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `or(and(sender_id.eq.${user.id},recipient_id.eq.${friendId}),and(sender_id.eq.${friendId},recipient_id.eq.${user.id}))`
+        },
+        (payload) => {
+          const updatedMessage = payload.new as Message;
+          setMessages(prev => prev.map(msg => 
+            msg.id === updatedMessage.id ? updatedMessage : msg
+          ));
         }
       )
       .subscribe();
@@ -122,16 +150,47 @@ export default function ChatPage() {
   const sendMessage = async (content: string) => {
     if (!user || !friendId || !content.trim()) return;
     
-    const { error } = await supabase
-      .from('messages')
-      .insert({
-        sender_id: user.id,
-        recipient_id: friendId,
-        content: content.trim(),
-        message_type: 'text'
-      });
+    // Create optimistic message
+    const optimisticId = `temp-${Date.now()}`;
+    const optimisticMessage: Message = {
+      id: optimisticId,
+      content: content.trim(),
+      sender_id: user.id,
+      recipient_id: friendId,
+      created_at: new Date().toISOString(),
+      is_read: false
+    };
+    
+    // Add optimistic message immediately
+    setMessages(prev => [...prev, optimisticMessage]);
+    setOptimisticMessages(prev => [...prev, optimisticId]);
+    
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: user.id,
+          recipient_id: friendId,
+          content: content.trim(),
+          message_type: 'text'
+        })
+        .select()
+        .single();
 
-    if (error) {
+      if (error) throw error;
+      
+      // Replace optimistic message with real one
+      if (data) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === optimisticId ? data : msg
+        ));
+        setOptimisticMessages(prev => prev.filter(id => id !== optimisticId));
+      }
+    } catch (error) {
+      // Remove failed optimistic message
+      setMessages(prev => prev.filter(msg => msg.id !== optimisticId));
+      setOptimisticMessages(prev => prev.filter(id => id !== optimisticId));
+      
       toast({
         title: "Error",
         description: "Failed to send message",
@@ -148,13 +207,14 @@ export default function ChatPage() {
   const transformedMessages = messages.map(msg => {
     // Validate created_at timestamp
     const timestamp = msg.created_at ? new Date(msg.created_at) : new Date();
+    const isOptimistic = optimisticMessages.includes(msg.id);
     
     return {
       id: msg.id,
       content: msg.content,
       timestamp: isNaN(timestamp.getTime()) ? new Date() : timestamp,
       isSent: msg.sender_id === user?.id,
-      status: (msg.is_read ? 'read' : 'delivered') as 'sent' | 'delivered' | 'read',
+      status: isOptimistic ? 'sending' as const : (msg.is_read ? 'read' : 'delivered') as 'sent' | 'delivered' | 'read',
       type: 'text' as const
     };
   });
