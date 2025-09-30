@@ -19,6 +19,7 @@ interface Profile {
   display_name: string;
   bio: string;
   profile_photo_url: string;
+  cover_photo_url?: string;
   created_at: string;
   updated_at: string;
 }
@@ -180,6 +181,58 @@ export default function ProfilePage() {
     }
   };
 
+  const uploadProfilePhoto = async (file: File) => {
+    if (!user) return;
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file);
+    
+    if (uploadError) {
+      toast({
+        title: "Error",
+        description: "Failed to upload photo",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+    
+    await updateProfile({ profile_photo_url: publicUrl });
+  };
+
+  const uploadCoverPhoto = async (file: File) => {
+    if (!user) return;
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('covers')
+      .upload(fileName, file);
+    
+    if (uploadError) {
+      toast({
+        title: "Error",
+        description: "Failed to upload cover photo",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('covers')
+      .getPublicUrl(fileName);
+    
+    await updateProfile({ cover_photo_url: publicUrl });
+  };
+
   const createPost = async () => {
     if (!user || !newPost.content.trim()) return;
     
@@ -225,26 +278,71 @@ export default function ProfilePage() {
       <div className="max-w-4xl mx-auto p-4">
         {/* Cover Photo */}
         <div className="relative h-64 bg-gradient-primary rounded-t-2xl overflow-hidden">
-          <Button 
-            size="icon" 
-            variant="secondary" 
-            className="absolute top-4 right-4"
-            onClick={() => setIsEditing(!isEditing)}
-          >
-            {isEditing ? <Settings className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
-          </Button>
+          {profile.cover_photo_url && (
+            <img 
+              src={profile.cover_photo_url} 
+              alt="Cover" 
+              className="w-full h-full object-cover" 
+            />
+          )}
+          {isOwnProfile && (
+            <>
+              <input
+                type="file"
+                id="cover-upload"
+                className="hidden"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadCoverPhoto(file);
+                }}
+              />
+              <Button 
+                size="icon" 
+                variant="secondary" 
+                className="absolute top-4 right-4"
+                onClick={() => document.getElementById('cover-upload')?.click()}
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Profile Info */}
         <Card className="relative -mt-16 mx-4 shadow-elegant">
           <CardContent className="pt-20 pb-6">
             <div className="absolute -top-16 left-1/2 transform -translate-x-1/2">
-              <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
-                <AvatarImage src={profile.profile_photo_url} />
-                <AvatarFallback className="text-2xl">
-                  {profile.display_name?.charAt(0) || profile.username.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
+                  <AvatarImage src={profile.profile_photo_url} />
+                  <AvatarFallback className="text-2xl">
+                    {profile.display_name?.charAt(0) || profile.username.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                {isOwnProfile && (
+                  <>
+                    <input
+                      type="file"
+                      id="avatar-upload"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadProfilePhoto(file);
+                      }}
+                    />
+                    <Button 
+                      size="icon" 
+                      variant="secondary" 
+                      className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+                      onClick={() => document.getElementById('avatar-upload')?.click()}
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="text-center space-y-2">

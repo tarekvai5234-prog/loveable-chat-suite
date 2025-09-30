@@ -14,6 +14,8 @@ interface Message {
   recipient_id: string;
   created_at: string;
   is_read: boolean;
+  media_url?: string;
+  message_type: string;
 }
 
 interface Profile {
@@ -160,18 +162,48 @@ export default function ChatPage() {
     };
   };
 
-  const sendMessage = async (content: string) => {
-    if (!user || !friendId || !content.trim()) return;
+  const sendMessage = async (content: string, type: 'text' | 'image' | 'file' = 'text', file?: File) => {
+    if (!user || !friendId) return;
+    if (!content.trim() && !file) return;
+    
+    let mediaUrl: string | undefined;
+    
+    // Upload file if provided
+    if (file) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${friendId}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('messages')
+        .upload(fileName, file);
+      
+      if (uploadError) {
+        toast({
+          title: "Error",
+          description: "Failed to upload file",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('messages')
+        .getPublicUrl(fileName);
+      
+      mediaUrl = publicUrl;
+    }
     
     // Create optimistic message
     const optimisticId = `temp-${Date.now()}`;
     const optimisticMessage: Message = {
       id: optimisticId,
-      content: content.trim(),
+      content: content.trim() || (file ? file.name : ''),
       sender_id: user.id,
       recipient_id: friendId,
       created_at: new Date().toISOString(),
-      is_read: false
+      is_read: false,
+      media_url: mediaUrl,
+      message_type: type
     };
     
     // Add optimistic message immediately
@@ -184,8 +216,9 @@ export default function ChatPage() {
         .insert({
           sender_id: user.id,
           recipient_id: friendId,
-          content: content.trim(),
-          message_type: 'text'
+          content: content.trim() || (file ? file.name : ''),
+          message_type: type,
+          media_url: mediaUrl
         })
         .select()
         .single();
@@ -212,8 +245,8 @@ export default function ChatPage() {
     }
   };
 
-  const handleSendMessage = (content: string) => {
-    sendMessage(content);
+  const handleSendMessage = (content: string, type?: 'text' | 'image' | 'file', file?: File) => {
+    sendMessage(content, type, file);
   };
 
   // Transform messages for the MessageList component
@@ -228,7 +261,8 @@ export default function ChatPage() {
       timestamp: isNaN(timestamp.getTime()) ? new Date() : timestamp,
       isSent: msg.sender_id === user?.id,
       status: isOptimistic ? 'sending' as const : (msg.is_read ? 'read' : 'delivered') as 'sent' | 'delivered' | 'read',
-      type: 'text' as const
+      type: (msg.message_type || 'text') as 'text' | 'image' | 'file',
+      media_url: msg.media_url
     };
   });
 

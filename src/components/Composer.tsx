@@ -5,7 +5,7 @@ import { Send, Paperclip, Image, Smile, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ComposerProps {
-  onSendMessage: (content: string, type?: 'text' | 'image' | 'file') => void;
+  onSendMessage: (content: string, type?: 'text' | 'image' | 'file', file?: File) => void;
   isE2EEEnabled: boolean;
 }
 
@@ -52,9 +52,12 @@ export const Composer: React.FC<ComposerProps> = ({ onSendMessage, isE2EEEnabled
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // For demo purposes, just send the filename
       const isImage = file.type.startsWith('image/');
-      onSendMessage(`📎 ${file.name}`, isImage ? 'image' : 'file');
+      onSendMessage('', isImage ? 'image' : 'file', file);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 

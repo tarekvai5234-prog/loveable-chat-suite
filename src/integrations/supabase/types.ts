@@ -47,6 +47,7 @@ export type Database = {
           created_at: string
           id: string
           is_read: boolean
+          media_url: string | null
           message_type: string
           recipient_id: string
           sender_id: string
@@ -56,6 +57,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          media_url?: string | null
           message_type?: string
           recipient_id: string
           sender_id: string
@@ -65,6 +67,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          media_url?: string | null
           message_type?: string
           recipient_id?: string
           sender_id?: string
@@ -110,6 +113,7 @@ export type Database = {
       profiles: {
         Row: {
           bio: string | null
+          cover_photo_url: string | null
           created_at: string
           display_name: string | null
           id: string
@@ -120,6 +124,7 @@ export type Database = {
         }
         Insert: {
           bio?: string | null
+          cover_photo_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
@@ -130,6 +135,7 @@ export type Database = {
         }
         Update: {
           bio?: string | null
+          cover_photo_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
