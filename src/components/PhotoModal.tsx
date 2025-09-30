@@ -1,81 +1,125 @@
-import React from 'react';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import React, { useState } from 'react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Download, Share } from 'lucide-react';
+import { X, Upload, Trash2, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PhotoModalProps {
   src: string;
   alt: string;
   isOpen: boolean;
   onClose: () => void;
+  onUpload?: () => void;
+  onDelete?: () => void;
+  previousPhotos?: string[];
+  canEdit?: boolean;
 }
 
-export const PhotoModal: React.FC<PhotoModalProps> = ({ src, alt, isOpen, onClose }) => {
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = src;
-    link.download = alt || 'image';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+export const PhotoModal: React.FC<PhotoModalProps> = ({ 
+  src, 
+  alt, 
+  isOpen, 
+  onClose, 
+  onUpload,
+  onDelete,
+  previousPhotos = [],
+  canEdit = false
+}) => {
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const allPhotos = [src, ...previousPhotos];
+  const currentPhoto = allPhotos[currentPhotoIndex];
+
+  const handlePrevious = () => {
+    setCurrentPhotoIndex((prev) => (prev > 0 ? prev - 1 : allPhotos.length - 1));
   };
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: alt || 'Shared Image',
-          url: src
-        });
-      } catch (err) {
-        console.log('Error sharing:', err);
-      }
-    }
+  const handleNext = () => {
+    setCurrentPhotoIndex((prev) => (prev < allPhotos.length - 1 ? prev + 1 : 0));
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 bg-black/90">
-        <div className="relative w-full h-full flex items-center justify-center">
+      <DialogContent className="max-w-4xl max-h-[90vh] p-0 bg-black/90 border-0">
+        <div className="relative w-full h-full flex flex-col items-center justify-center p-4">
           {/* Close button */}
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 text-white hover:bg-white/10"
+            className="absolute top-4 right-4 z-10 text-white hover:bg-white/20"
           >
             <X className="w-6 h-6" />
           </Button>
 
-          {/* Action buttons */}
-          <div className="absolute top-4 left-4 z-10 flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleDownload}
-              className="text-white hover:bg-white/10"
-            >
-              <Download className="w-5 h-5" />
-            </Button>
-            {navigator.share && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleShare}
-                className="text-white hover:bg-white/10"
-              >
-                <Share className="w-5 h-5" />
-              </Button>
-            )}
-          </div>
+          {/* Action buttons - only show if user can edit */}
+          {canEdit && (
+            <div className="absolute top-4 left-4 z-10 flex gap-2">
+              {onUpload && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    onUpload();
+                    onClose();
+                  }}
+                  className="text-white hover:bg-white/20 gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload New
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    onDelete();
+                    onClose();
+                  }}
+                  className="text-white hover:bg-white/20 gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Image */}
-          <img
-            src={src}
-            alt={alt}
-            className="max-w-full max-h-full object-contain"
-            onClick={onClose}
-          />
+          <div className="relative flex items-center justify-center w-full h-full">
+            {allPhotos.length > 1 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handlePrevious}
+                  className="absolute left-0 z-10 text-white hover:bg-white/20"
+                >
+                  <ChevronLeft className="w-8 h-8" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleNext}
+                  className="absolute right-0 z-10 text-white hover:bg-white/20"
+                >
+                  <ChevronRight className="w-8 h-8" />
+                </Button>
+              </>
+            )}
+            
+            <img
+              src={currentPhoto}
+              alt={alt}
+              className="max-w-full max-h-[70vh] object-contain rounded-lg"
+            />
+          </div>
+
+          {/* Photo counter */}
+          {allPhotos.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+              {currentPhotoIndex + 1} / {allPhotos.length}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

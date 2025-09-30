@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Navigation } from '@/components/Navigation';
 import { ImageCropModal } from '@/components/ImageCropModal';
+import { PhotoModal } from '@/components/PhotoModal';
 
 interface Profile {
   id: string;
@@ -53,6 +54,8 @@ export default function ProfilePage() {
   const [cropImageUrl, setCropImageUrl] = useState('');
   const [cropType, setCropType] = useState<'profile' | 'cover'>('profile');
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [photoModalType, setPhotoModalType] = useState<'profile' | 'cover'>('profile');
   
   const isOwnProfile = !userId || userId === user?.id;
 
@@ -234,6 +237,23 @@ export default function ProfilePage() {
     handleImageSelect(file, 'cover');
   };
 
+  const handleDeletePhoto = async (type: 'profile' | 'cover') => {
+    if (!user) return;
+    
+    const updateField = type === 'profile' ? 'profile_photo_url' : 'cover_photo_url';
+    await updateProfile({ [updateField]: null });
+    
+    toast({
+      title: "Success",
+      description: `${type === 'profile' ? 'Profile' : 'Cover'} photo deleted`
+    });
+  };
+
+  const openPhotoModal = (type: 'profile' | 'cover') => {
+    setPhotoModalType(type);
+    setPhotoModalOpen(true);
+  };
+
   const createPost = async () => {
     if (!user || !newPost.content.trim()) return;
     
@@ -278,7 +298,10 @@ export default function ProfilePage() {
       
       <div className="max-w-4xl mx-auto p-4">
         {/* Cover Photo */}
-        <div className="relative h-64 bg-gradient-primary rounded-t-2xl overflow-hidden">
+        <div 
+          className="relative h-64 bg-gradient-primary rounded-t-2xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+          onClick={() => profile.cover_photo_url && openPhotoModal('cover')}
+        >
           {profile.cover_photo_url && (
             <img 
               src={profile.cover_photo_url} 
@@ -302,7 +325,10 @@ export default function ProfilePage() {
                 size="icon" 
                 variant="secondary" 
                 className="absolute top-4 right-4"
-                onClick={() => document.getElementById('cover-upload')?.click()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  document.getElementById('cover-upload')?.click();
+                }}
               >
                 <Camera className="h-4 w-4" />
               </Button>
@@ -315,7 +341,10 @@ export default function ProfilePage() {
           <CardContent className="pt-20 pb-6">
             <div className="absolute -top-16 left-1/2 transform -translate-x-1/2">
               <div className="relative">
-                <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
+                <Avatar 
+                  className="h-32 w-32 border-4 border-background shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => openPhotoModal('profile')}
+                >
                   <AvatarImage src={profile.profile_photo_url} />
                   <AvatarFallback className="text-2xl">
                     {profile.display_name?.charAt(0) || profile.username.charAt(0)}
@@ -337,7 +366,10 @@ export default function ProfilePage() {
                       size="icon" 
                       variant="secondary" 
                       className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
-                      onClick={() => document.getElementById('avatar-upload')?.click()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        document.getElementById('avatar-upload')?.click();
+                      }}
                     >
                       <Camera className="h-4 w-4" />
                     </Button>
@@ -553,6 +585,17 @@ export default function ProfilePage() {
         onCropComplete={handleCropComplete}
         aspectRatio={cropType === 'profile' ? 1 : 16 / 9}
         title={cropType === 'profile' ? 'Crop Profile Photo' : 'Crop Cover Photo'}
+      />
+
+      {/* Photo View Modal */}
+      <PhotoModal
+        isOpen={photoModalOpen}
+        onClose={() => setPhotoModalOpen(false)}
+        src={photoModalType === 'profile' ? profile.profile_photo_url : profile.cover_photo_url || ''}
+        alt={photoModalType === 'profile' ? 'Profile Photo' : 'Cover Photo'}
+        canEdit={isOwnProfile}
+        onUpload={() => document.getElementById(photoModalType === 'profile' ? 'avatar-upload' : 'cover-upload')?.click()}
+        onDelete={() => handleDeletePhoto(photoModalType)}
       />
     </div>
   );
