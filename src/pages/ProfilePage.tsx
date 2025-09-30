@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Navigation } from '@/components/Navigation';
+import { ImageCropModal } from '@/components/ImageCropModal';
 
 interface Profile {
   id: string;
@@ -48,6 +49,10 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [newPost, setNewPost] = useState({ content: '', type: 'status' });
   const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'pending' | 'accepted' | 'sent'>('none');
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImageUrl, setCropImageUrl] = useState('');
+  const [cropType, setCropType] = useState<'profile' | 'cover'>('profile');
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   
   const isOwnProfile = !userId || userId === user?.id;
 
@@ -181,56 +186,52 @@ export default function ProfilePage() {
     }
   };
 
-  const uploadProfilePhoto = async (file: File) => {
-    if (!user) return;
+  const handleImageSelect = (file: File, type: 'profile' | 'cover') => {
+    setPendingFile(file);
+    setCropType(type);
+    const url = URL.createObjectURL(file);
+    setCropImageUrl(url);
+    setCropModalOpen(true);
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    if (!user || !pendingFile) return;
     
-    const fileExt = file.name.split('.').pop();
+    const fileExt = pendingFile.name.split('.').pop();
     const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    const bucket = cropType === 'profile' ? 'avatars' : 'covers';
     
     const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(fileName, file);
+      .from(bucket)
+      .upload(fileName, croppedBlob);
     
     if (uploadError) {
       toast({
         title: "Error",
-        description: "Failed to upload photo",
+        description: `Failed to upload ${cropType} photo`,
         variant: "destructive"
       });
       return;
     }
     
     const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
+      .from(bucket)
       .getPublicUrl(fileName);
     
-    await updateProfile({ profile_photo_url: publicUrl });
+    const updateField = cropType === 'profile' ? 'profile_photo_url' : 'cover_photo_url';
+    await updateProfile({ [updateField]: publicUrl });
+    
+    // Cleanup
+    URL.revokeObjectURL(cropImageUrl);
+    setPendingFile(null);
+  };
+
+  const uploadProfilePhoto = async (file: File) => {
+    handleImageSelect(file, 'profile');
   };
 
   const uploadCoverPhoto = async (file: File) => {
-    if (!user) return;
-    
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-    
-    const { error: uploadError } = await supabase.storage
-      .from('covers')
-      .upload(fileName, file);
-    
-    if (uploadError) {
-      toast({
-        title: "Error",
-        description: "Failed to upload cover photo",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const { data: { publicUrl } } = supabase.storage
-      .from('covers')
-      .getPublicUrl(fileName);
-    
-    await updateProfile({ cover_photo_url: publicUrl });
+    handleImageSelect(file, 'cover');
   };
 
   const createPost = async () => {
@@ -539,6 +540,20 @@ export default function ProfilePage() {
           ))}
         </div>
       </div>
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        isOpen={cropModalOpen}
+        onClose={() => {
+          setCropModalOpen(false);
+          URL.revokeObjectURL(cropImageUrl);
+          setPendingFile(null);
+        }}
+        imageUrl={cropImageUrl}
+        onCropComplete={handleCropComplete}
+        aspectRatio={cropType === 'profile' ? 1 : 16 / 9}
+        title={cropType === 'profile' ? 'Crop Profile Photo' : 'Crop Cover Photo'}
+      />
     </div>
   );
 }
