@@ -82,21 +82,36 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     }
     
     if (message.type === 'file' && message.media_url) {
+      const handleDownload = async () => {
+        try {
+          const response = await fetch(message.media_url!);
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = message.content || 'download';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        } catch (error) {
+          console.error('Download failed:', error);
+        }
+      };
+
       return (
         <div className="flex items-center gap-2 p-2 bg-muted/20 rounded-lg">
           <div className="p-2 bg-primary/10 rounded-lg">
             <Image className="w-5 h-5" />
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium">{message.content || 'File attachment'}</p>
-            <a 
-              href={message.media_url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-xs text-primary hover:underline"
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{message.content || 'File attachment'}</p>
+            <button 
+              onClick={handleDownload}
+              className="text-xs text-primary hover:underline cursor-pointer"
             >
               Download
-            </a>
+            </button>
           </div>
         </div>
       );
