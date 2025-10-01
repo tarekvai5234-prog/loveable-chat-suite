@@ -1,8 +1,10 @@
 import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Send, Paperclip, Image, Smile, Shield, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 
 interface ComposerProps {
   onSendMessage: (content: string, type?: 'text' | 'image' | 'file', file?: File) => void;
@@ -23,6 +25,7 @@ export const Composer: React.FC<ComposerProps> = ({
 }) => {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,6 +81,12 @@ export const Composer: React.FC<ComposerProps> = ({
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setMessage(prev => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+    textareaRef.current?.focus();
   };
 
   return (
@@ -159,13 +168,20 @@ export const Composer: React.FC<ComposerProps> = ({
           </div>
 
           {/* Emoji picker */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground h-10 w-10"
-          >
-            <Smile className="w-5 h-5" />
-          </Button>
+          <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground h-10 w-10"
+              >
+                <Smile className="w-5 h-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 border-0" align="end" side="top">
+              <EmojiPicker onEmojiClick={handleEmojiClick} />
+            </PopoverContent>
+          </Popover>
 
           {/* Send button */}
           <Button
