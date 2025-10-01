@@ -15,9 +15,13 @@ interface Message {
 
 interface MessageListProps {
   messages: Message[];
+  onReply?: (message: Message) => void;
+  onCopy?: (message: Message) => void;
+  onDelete?: (message: Message) => void;
+  onEdit?: (message: Message) => void;
 }
 
-export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
+export const MessageList: React.FC<MessageListProps> = ({ messages, onReply, onCopy, onDelete, onEdit }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -85,6 +89,10 @@ export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
                   message={message}
                   isFirstInGroup={isFirstInGroup}
                   isLastInGroup={isLastInGroup}
+                  onReply={onReply}
+                  onCopy={onCopy}
+                  onDelete={onDelete}
+                  onEdit={onEdit}
                 />
               );
             })}

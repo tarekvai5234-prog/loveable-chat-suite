@@ -1,19 +1,38 @@
-import React, { useState, useRef, KeyboardEvent } from 'react';
+import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Paperclip, Image, Smile, Shield } from 'lucide-react';
+import { Send, Paperclip, Image, Smile, Shield, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ComposerProps {
   onSendMessage: (content: string, type?: 'text' | 'image' | 'file', file?: File) => void;
   isE2EEEnabled: boolean;
+  replyTo?: { id: string; content: string } | null;
+  editMessage?: { id: string; content: string } | null;
+  onCancelReply?: () => void;
+  onCancelEdit?: () => void;
 }
 
-export const Composer: React.FC<ComposerProps> = ({ onSendMessage, isE2EEEnabled }) => {
+export const Composer: React.FC<ComposerProps> = ({ 
+  onSendMessage, 
+  isE2EEEnabled, 
+  replyTo, 
+  editMessage,
+  onCancelReply,
+  onCancelEdit 
+}) => {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Set message content when editing
+  useEffect(() => {
+    if (editMessage) {
+      setMessage(editMessage.content);
+      textareaRef.current?.focus();
+    }
+  }, [editMessage]);
 
   const handleSend = () => {
     if (message.trim()) {
@@ -63,6 +82,30 @@ export const Composer: React.FC<ComposerProps> = ({ onSendMessage, isE2EEEnabled
 
   return (
     <div className="border-t border-border bg-background/80 backdrop-blur-sm">
+      {/* Reply/Edit Context */}
+      {(replyTo || editMessage) && (
+        <div className="px-4 pt-3 pb-2 border-b border-border/50 bg-accent/30">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-primary mb-1">
+                {editMessage ? 'Edit message' : 'Reply to'}
+              </div>
+              <div className="text-sm text-muted-foreground truncate">
+                {editMessage ? editMessage.content : replyTo?.content}
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 ml-2"
+              onClick={editMessage ? onCancelEdit : onCancelReply}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+      
       <div className="p-4">
         <div className="flex items-end gap-3">
           {/* File attachment */}

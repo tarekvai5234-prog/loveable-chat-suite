@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { Check, CheckCheck, Clock, Shield, Edit3, Image } from 'lucide-react';
+import { Check, CheckCheck, Clock, Shield, Edit3, Image, MoreVertical, Reply, Copy, Trash2, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoModal } from './PhotoModal';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 
 interface Message {
   id: string;
@@ -20,14 +27,27 @@ interface MessageBubbleProps {
   message: Message;
   isFirstInGroup: boolean;
   isLastInGroup: boolean;
+  onReply?: (message: Message) => void;
+  onCopy?: (message: Message) => void;
+  onDelete?: (message: Message) => void;
+  onEdit?: (message: Message) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ 
   message, 
   isFirstInGroup, 
-  isLastInGroup 
+  isLastInGroup,
+  onReply,
+  onCopy,
+  onDelete,
+  onEdit
 }) => {
   const [isPhotoOpen, setIsPhotoOpen] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.content);
+    if (onCopy) onCopy(message);
+  };
 
   const renderStatusIcon = () => {
     switch (message.status) {
@@ -108,6 +128,50 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           message.isSent ? "ml-12" : "mr-12"
         )}
       >
+        {/* Message Options Menu */}
+        <div className={cn(
+          "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity z-20",
+          message.isSent ? "-left-10" : "-right-10"
+        )}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-accent"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={message.isSent ? "end" : "start"}>
+              {onReply && (
+                <DropdownMenuItem onClick={() => onReply(message)}>
+                  <Reply className="h-4 w-4 mr-2" />
+                  Reply
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={handleCopy}>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy
+              </DropdownMenuItem>
+              {message.isSent && onEdit && message.type === 'text' && (
+                <DropdownMenuItem onClick={() => onEdit(message)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {message.isSent && onDelete && (
+                <DropdownMenuItem 
+                  onClick={() => onDelete(message)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <div
           className={cn(
             "px-4 py-3 text-sm font-medium transition-all duration-200",

@@ -35,6 +35,8 @@ export default function ChatPage() {
   const [isE2EEEnabled, setIsE2EEEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [optimisticMessages, setOptimisticMessages] = useState<string[]>([]);
+  const [replyTo, setReplyTo] = useState<{ id: string; content: string } | null>(null);
+  const [editMessage, setEditMessage] = useState<{ id: string; content: string } | null>(null);
 
   useEffect(() => {
     if (user && friendId) {
@@ -245,8 +247,77 @@ export default function ChatPage() {
     }
   };
 
-  const handleSendMessage = (content: string, type?: 'text' | 'image' | 'file', file?: File) => {
-    sendMessage(content, type, file);
+  const handleSendMessage = async (content: string, type?: 'text' | 'image' | 'file', file?: File) => {
+    if (editMessage) {
+      // Handle edit
+      await handleEditMessage(editMessage.id, content);
+      setEditMessage(null);
+    } else {
+      // Handle normal send
+      sendMessage(content, type, file);
+      setReplyTo(null);
+    }
+  };
+
+  const handleDeleteMessage = async (message: any) => {
+    if (!user) return;
+    
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', message.id)
+      .eq('sender_id', user.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete message",
+        variant: "destructive"
+      });
+    } else {
+      setMessages(prev => prev.filter(msg => msg.id !== message.id));
+      toast({
+        title: "Message deleted",
+        description: "The message has been deleted"
+      });
+    }
+  };
+
+  const handleEditMessage = async (messageId: string, newContent: string) => {
+    if (!user) return;
+    
+    const { error } = await supabase
+      .from('messages')
+      .update({ 
+        content: newContent,
+        message_type: 'text' // Store edited flag in message_type or add new column
+      })
+      .eq('id', messageId)
+      .eq('sender_id', user.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to edit message",
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Message edited",
+        description: "The message has been updated"
+      });
+    }
+  };
+
+  const handleReply = (message: any) => {
+    setReplyTo({ id: message.id, content: message.content });
+  };
+
+  const handleCopy = (message: any) => {
+    toast({
+      title: "Copied",
+      description: "Message copied to clipboard"
+    });
   };
 
   // Transform messages for the MessageList component
@@ -281,8 +352,21 @@ export default function ChatPage() {
         isE2EEEnabled={isE2EEEnabled}
         onToggleE2EE={() => setIsE2EEEnabled(!isE2EEEnabled)}
       />
-      <MessageList messages={transformedMessages} />
-      <Composer onSendMessage={handleSendMessage} isE2EEEnabled={isE2EEEnabled} />
+      <MessageList 
+        messages={transformedMessages}
+        onReply={handleReply}
+        onCopy={handleCopy}
+        onDelete={handleDeleteMessage}
+        onEdit={(msg) => setEditMessage({ id: msg.id, content: msg.content })}
+      />
+      <Composer 
+        onSendMessage={handleSendMessage} 
+        isE2EEEnabled={isE2EEEnabled}
+        replyTo={replyTo}
+        editMessage={editMessage}
+        onCancelReply={() => setReplyTo(null)}
+        onCancelEdit={() => setEditMessage(null)}
+      />
     </div>
   );
 }
